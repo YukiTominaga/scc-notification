@@ -1,0 +1,27 @@
+steps:
+  - name: "gcr.io/cloud-builders/gcloud"
+    id: "access secret manager"
+    volumes:
+      - name: 'vol1'
+        path: '/persistent_volume'
+
+    entrypoint: bash
+    args:
+      - '-c'
+      - |
+        gcloud secrets versions access 1 --secret=slack-incoming-webhook-url > /persistent_volume/SLACK_WEBHOOK_URL
+
+  - name: "gcr.io/cloud-builders/gcloud"
+    id: "deploy function"
+    volumes:
+      - name: 'vol1'
+        path: '/persistent_volume'
+    dir: "src"
+    entrypoint: bash
+    args:
+      - '-c'
+      - |
+        export SLACK_WEBHOOK_URL=`cat /persistent_volume/SLACK_WEBHOOK_URL` && \
+        env && \
+        echo $SLACK_WEBHOOK_URL &&\
+        echo gcloud beta functions deploy sccNotify --runtime=nodejs12 --region=asia-northeast1 --trigger-topic=scc-notification --set-env-vars=SLACK_WEBHOOK_URL=$SLACK_WEBHOOK_URL --project=$PROJECT_ID
